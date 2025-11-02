@@ -2,7 +2,7 @@ import { apiCall } from './apiAdapter';
 import type { HooksConfiguration } from '@/types/hooks';
 
 /** Process type for tracking in ProcessRegistry */
-export type ProcessType = 
+export type ProcessType =
   | { AgentRun: { agent_id: number; agent_name: string } }
   | { ClaudeSession: { session_id: string } };
 
@@ -448,6 +448,29 @@ export interface ImportServerResult {
  * API client for interacting with the Rust backend
  */
 export const api = {
+
+  /**
+   * Map chat model to settings model
+   * @param model model selected from chat
+   * @returns
+   */
+  async getModelFromSettings(model: string): Promise<string> {
+    try {
+      const loadedSettings = await this.getClaudeSettings();
+      if (loadedSettings.env && typeof loadedSettings.env === 'object' && !Array.isArray(loadedSettings.env)) {
+        if (loadedSettings.env.ANTHROPIC_MODEL && model === 'sonnet') {
+          return loadedSettings.env.ANTHROPIC_MODEL;
+        }
+        if (loadedSettings.env.ANTHROPIC_SMALL_FAST_MODEL && model === 'opus') {
+          return loadedSettings.env.ANTHROPIC_SMALL_FAST_MODEL;
+        }
+      }
+    } catch {
+      console.log("Failed to load agent settings");
+    }
+    return model;
+  },
+
   /**
    * Gets the user's home directory path
    * @returns Promise resolving to the home directory path
@@ -551,13 +574,13 @@ export const api = {
     try {
       const result = await apiCall<{ data: ClaudeSettings }>("get_claude_settings");
       console.log("Raw result from get_claude_settings:", result);
-      
+
       // The Rust backend returns ClaudeSettings { data: ... }
       // We need to extract the data field
       if (result && typeof result === 'object' && 'data' in result) {
         return result.data;
       }
-      
+
       // If the result is already the settings object, return it
       return result as ClaudeSettings;
     } catch (error) {
@@ -678,7 +701,7 @@ export const api = {
   },
 
   // Agent API methods
-  
+
   /**
    * Lists all CC agents
    * @returns Promise resolving to an array of agents
@@ -703,17 +726,18 @@ export const api = {
    * @returns Promise resolving to the created agent
    */
   async createAgent(
-    name: string, 
-    icon: string, 
-    system_prompt: string, 
-    default_task?: string, 
+    name: string,
+    icon: string,
+    system_prompt: string,
+    default_task?: string,
     model?: string,
     hooks?: string
   ): Promise<Agent> {
+    model && (model = await this.getModelFromSettings(model))
     try {
-      return await apiCall<Agent>('create_agent', { 
-        name, 
-        icon, 
+      return await apiCall<Agent>('create_agent', {
+        name,
+        icon,
         systemPrompt: system_prompt,
         defaultTask: default_task,
         model,
@@ -737,19 +761,20 @@ export const api = {
    * @returns Promise resolving to the updated agent
    */
   async updateAgent(
-    id: number, 
-    name: string, 
-    icon: string, 
-    system_prompt: string, 
-    default_task?: string, 
+    id: number,
+    name: string,
+    icon: string,
+    system_prompt: string,
+    default_task?: string,
     model?: string,
     hooks?: string
   ): Promise<Agent> {
+    model && (model = await this.getModelFromSettings(model))
     try {
-      return await apiCall<Agent>('update_agent', { 
-        id, 
-        name, 
-        icon, 
+      return await apiCall<Agent>('update_agent', {
+        id,
+        name,
+        icon,
         systemPrompt: system_prompt,
         defaultTask: default_task,
         model,
@@ -840,6 +865,7 @@ export const api = {
    * @returns Promise resolving to the run ID when execution starts
    */
   async executeAgent(agentId: number, projectPath: string, task: string, model?: string): Promise<number> {
+    model && (model = await this.getModelFromSettings(model))
     try {
       return await apiCall<number>('execute_agent', { agentId, projectPath, task, model });
     } catch (error) {
@@ -1029,6 +1055,7 @@ export const api = {
    * Executes a new interactive Claude Code session with streaming output
    */
   async executeClaudeCode(projectPath: string, prompt: string, model: string): Promise<void> {
+    model = await this.getModelFromSettings(model)
     return apiCall("execute_claude_code", { projectPath, prompt, model });
   },
 
@@ -1036,6 +1063,7 @@ export const api = {
    * Continues an existing Claude Code conversation with streaming output
    */
   async continueClaudeCode(projectPath: string, prompt: string, model: string): Promise<void> {
+    model = await this.getModelFromSettings(model)
     return apiCall("continue_claude_code", { projectPath, prompt, model });
   },
 
@@ -1043,6 +1071,7 @@ export const api = {
    * Resumes an existing Claude Code session by ID with streaming output
    */
   async resumeClaudeCode(projectPath: string, sessionId: string, prompt: string, model: string): Promise<void> {
+    model = await this.getModelFromSettings(model)
     return apiCall("resume_claude_code", { projectPath, sessionId, prompt, model });
   },
 
@@ -1386,9 +1415,9 @@ export const api = {
    * Tracks a batch of messages for a session for checkpointing
    */
   trackSessionMessages: (
-    sessionId: string, 
-    projectId: string, 
-    projectPath: string, 
+    sessionId: string,
+    projectId: string,
+    projectPath: string,
     messages: string[]
   ): Promise<void> =>
     apiCall("track_session_messages", { sessionId, projectId, projectPath, messages }),
