@@ -935,8 +935,6 @@ pub async fn execute_claude_code(
     let args = vec![
         "-p".to_string(),
         prompt.clone(),
-        "--model".to_string(),
-        model.clone(),
         "--output-format".to_string(),
         "stream-json".to_string(),
         "--verbose".to_string(),
@@ -967,8 +965,6 @@ pub async fn continue_claude_code(
         "-c".to_string(), // Continue flag
         "-p".to_string(),
         prompt.clone(),
-        "--model".to_string(),
-        model.clone(),
         "--output-format".to_string(),
         "stream-json".to_string(),
         "--verbose".to_string(),
@@ -1002,8 +998,6 @@ pub async fn resume_claude_code(
         session_id.clone(),
         "-p".to_string(),
         prompt.clone(),
-        "--model".to_string(),
-        model.clone(),
         "--output-format".to_string(),
         "stream-json".to_string(),
         "--verbose".to_string(),
